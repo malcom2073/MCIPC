@@ -158,6 +158,7 @@ signals:
 	void si_incomingMessage(QByteArray message);
 	void si_incomingSubscribedMessage(QString id, QByteArray message);
 	void si_connected();
+	void si_disconnected();
 	void si_jsonPacketReceived(QJsonObject message);
 	void si_subscribeMessage(QString message);
 	void si_publishMessage(QString name, QByteArray payload);

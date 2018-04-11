@@ -87,7 +87,10 @@ void MCIPC::socketConnected()
 
 void MCIPC::socketDisconnected()
 {
-
+	//We have been disconnected, emit disconnected, and get rid of the socket.
+	emit si_disconnected();
+	m_socket->deleteLater();
+	m_socket = 0;
 }
 void MCIPC::serverNewConnection()
 {
