@@ -3,6 +3,8 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QVariant>
+#include <QDebug>
+
 MCIPCParser::MCIPCParser(QObject *parent) : QObject(parent)
 {
 
@@ -25,7 +27,7 @@ bool MCIPCParser::parsePacket(const QByteArray & packet)
 	}
 	else if (type == 3)
 	{
-		QJsonDocument doc = QJsonDocument::fromJson(packet.mid(4));
+		QJsonDocument doc = QJsonDocument::fromJson(packet.mid(8));
 		QJsonObject subobj = doc.object();
 		QString subname = subobj.value("name").toString();
 		emit subscribeMessage(subname);
@@ -33,21 +35,25 @@ bool MCIPCParser::parsePacket(const QByteArray & packet)
 	else if (type == 7)
 	{
 		//Subscribe
-		QJsonDocument doc = QJsonDocument::fromJson(packet.mid(4));
+		QJsonDocument doc = QJsonDocument::fromJson(packet.mid(8));
 		QJsonObject pubobj = doc.object();
 		QString pubname = pubobj.value("name").toString();
 		QByteArray pubmsg = pubobj.value("payload").toVariant().toByteArray();
 		emit publishMessage(pubname,pubmsg);
 	}
-	if (type == 2)
+	else if (type == 2)
 	{
 		//JSON
 		//return parseJsonPacket(packet.mid(4));
-		QJsonDocument doc = QJsonDocument::fromJson(packet.mid(4));
+		QJsonDocument doc = QJsonDocument::fromJson(packet.mid(8));
 		QJsonObject topobject = doc.object();
 		emit jsonPacketReceived(topobject);
 
 		return true;
+	}
+	else
+	{
+		qDebug() << "Unknown type returned:" << type;
 	}
 	return false;
 

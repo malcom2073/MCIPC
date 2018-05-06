@@ -11,9 +11,8 @@ Header and length are missing for UDP
 |01|02|03|AA|BB|CC|DD|B1|B2|B3|BN|EE|FF|GG|HH|
 
 Payload structure:
-|   Type    |  Message  |
-|T1|T2|T3|T4|B1|B2|B3|BN|
-
+|   Type    |   Flags   |  Message  |
+|T1|T2|T3|T4|F1|F2|F3|F4|B1|B2|B3|BN|
 Message Types from client to core:
 
 |00|00|00|01| - Register message, contains register string
@@ -24,6 +23,11 @@ JSON payload should have the message name to subscribe to
 |00|00|00|0B| -
 |00|00|00|0D| -
 |00|00|00|0F| -
+
+All messaages from server->client have a timestamp:
+
+|    Unix timestmap     |  Payload  |
+|11|22|33|44|55|66|77|88|B1|B2|B3|BN|
 
 Message types from server to client
 |00|00|00|02| - Auth reply, JSON reply giving server information
@@ -113,6 +117,7 @@ You could broadcast out to /local, or /, and then everyone on local, or globally
 #include <QObject>
 #include <QMap>
 #include "mcipcparser.h"
+#include "mcipcdatastore.h"
 
 class QTcpSocket;
 class QTcpServer;
@@ -123,7 +128,6 @@ class MCIPC : public QObject
 public:
 	explicit MCIPC(QString key, QObject *parent = 0);
 	MCIPC(QTcpSocket *socket, QObject *parent = 0);
-	void startServer(int portNum);
 	void connectToHost(QString address, int portNum);
 	MCIPCParser *parser() { return m_parser; }
 	void sendJsonMessage(QString target, QJsonObject object);
@@ -134,6 +138,7 @@ public:
 	void setName(QString key);
 	const QString & name() { return m_key; }
 private:
+	MCIPCDataStore *m_ipcDataStore;
 	QByteArray generateSubscribeMessage(QString messageName);
 	QByteArray generatePublishMessage(QString messageName,QByteArray payload);
 	QTcpSocket *m_socket;
@@ -149,10 +154,10 @@ private:
 	QList<QTcpSocket*> m_serverSocketListPreAuth;
 	MCIPCParser *m_parser;
 	QMap<QTcpSocket*,QByteArray> m_serverSocketBuffer;
-	bool checkAuth(QTcpSocket *socket,QByteArray *buffer);
-	bool decodePacket(QByteArray *buffer,QByteArray *packet);
 	QByteArray makeJsonPacket(QJsonObject message);
 	void checkBuffer();
+	QByteArray generateAuthMessage(QString key);
+
 	QList<QByteArray> m_packetBuffer;
 signals:
 	void si_incomingMessage(QByteArray message);
@@ -168,9 +173,6 @@ private slots:
 	void socketReadyRead();
 	void socketConnected();
 	void socketDisconnected();
-	void serverNewConnection();
-	void serverReadyRead();
-	void serverDisconnected();
 };
 
 #endif // MCIPC_H
