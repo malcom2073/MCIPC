@@ -107,6 +107,7 @@ void MCIPC::checkBuffer()
 		else
 		{
 			qDebug() << "Bad length";
+			return;
 		}
 	}
 	qDebug() << "Bad packet:" << m_socketBuffer.toHex();
