@@ -27,7 +27,7 @@ bool MCIPCParser::parsePacket(const QByteArray & packet)
 	}
 	else if (type == 3)
 	{
-		QJsonDocument doc = QJsonDocument::fromJson(packet.mid(8));
+		QJsonDocument doc = QJsonDocument::fromJson(packet.mid(16));
 		QJsonObject subobj = doc.object();
 		QString subname = subobj.value("name").toString();
 		emit subscribeMessage(subname);
@@ -35,17 +35,37 @@ bool MCIPCParser::parsePacket(const QByteArray & packet)
 	else if (type == 7)
 	{
 		//Subscribe
-		QJsonDocument doc = QJsonDocument::fromJson(packet.mid(8));
+		QJsonDocument doc = QJsonDocument::fromJson(packet.mid(16));
 		QJsonObject pubobj = doc.object();
 		QString pubname = pubobj.value("name").toString();
 		QByteArray pubmsg = pubobj.value("payload").toVariant().toByteArray();
 		emit publishMessage(pubname,pubmsg);
 	}
+	else if (type == 0x0B)
+	{
+		//PTP message
+		quint32 targetlen = 0;
+		targetlen += ((unsigned char)packet.at(8)) << 24;
+		targetlen += ((unsigned char)packet.at(9)) << 16;
+		targetlen += ((unsigned char)packet.at(10)) << 8;
+		targetlen += ((unsigned char)packet.at(11)) << 0;
+		QString targetstr = packet.mid(12,targetlen);
+
+		quint32 senderlen = 0;
+		senderlen += ((unsigned char)packet.at(12+targetlen)) << 24;
+		senderlen += ((unsigned char)packet.at(13+targetlen)) << 16;
+		senderlen += ((unsigned char)packet.at(14+targetlen)) << 8;
+		senderlen += ((unsigned char)packet.at(15+targetlen)) << 0;
+		QString senderstr = packet.mid(16+targetlen,senderlen);
+		QByteArray payload = packet.mid(16+targetlen+senderlen);
+		emit ptpMessageReceived(targetstr,senderstr,payload);
+
+	}
 	else if (type == 2)
 	{
 		//JSON
 		//return parseJsonPacket(packet.mid(4));
-		QJsonDocument doc = QJsonDocument::fromJson(packet.mid(8));
+		QJsonDocument doc = QJsonDocument::fromJson(packet.mid(16));
 		QJsonObject topobject = doc.object();
 		emit jsonPacketReceived(topobject);
 

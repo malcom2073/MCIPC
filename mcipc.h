@@ -5,14 +5,25 @@
 
 /*
 
+Subscribe is what a client does when it wants to receive publish events for a message
+Publish is what a client does whne it wants to send out a message to all subscribers
+Send Message sends a message to a specific client
+Unsubscribe removes a client from the subscription list of a message.
+
+
 Wire structure, checksum is not included for TCP/UDP, header is not included for UDP
 Header and length are missing for UDP
 | Header |  Length   |  Payload  | Checksum  |
 |01|02|03|AA|BB|CC|DD|B1|B2|B3|BN|EE|FF|GG|HH|
 
 Payload structure:
-|   Type    |   Flags   |  Message  |
-|T1|T2|T3|T4|F1|F2|F3|F4|B1|B2|B3|BN|
+|   Type    |   Flags   | TargetLen |  Target   | SenderLen |  Sender   |  Message  |
+|T1|T2|T3|T4|F1|F2|F3|F4|B1|B2|B3|B4|B1|B2|B3|BN|B1|B2|B3|B4|B1|B2|B3|BN|B1|B2|B3|BN|
+
+TargetLen and senderlen are always included, but if zero there is no target or sender.
+Only type 0x0000000B has a target, since is a PTP directed message. Any messages can have a sender, but
+it is not required. (Should it be?)
+
 Message Types from client to core:
 
 |00|00|00|01| - Register message, contains register string
@@ -20,7 +31,7 @@ Message Types from client to core:
 JSON payload should have the message name to subscribe to
 |00|00|00|05| - Unsubscribe
 |00|00|00|07| - Publish message
-|00|00|00|0B| -
+|00|00|00|0B| - Point-To-Point directed message
 |00|00|00|0D| -
 |00|00|00|0F| -
 
@@ -132,6 +143,7 @@ public:
 	MCIPCParser *parser() { return m_parser; }
 	void sendJsonMessage(QString target, QJsonObject object);
 
+	void sendMessage(QString target,QByteArray content,QString sender = QString());
 	void subscribeMessage(QString messageName);
 	void publishMessage(QString messageName,QByteArray content);
 	QByteArray generateCorePacket(QByteArray messageBytes);
@@ -141,6 +153,7 @@ private:
 	MCIPCDataStore *m_ipcDataStore;
 	QByteArray generateSubscribeMessage(QString messageName);
 	QByteArray generatePublishMessage(QString messageName,QByteArray payload);
+	QByteArray generateSendMessage(QString target,QString sender,QByteArray payload);
 	QTcpSocket *m_socket;
 	QTcpServer *m_server;
 	QString m_key;
@@ -167,7 +180,8 @@ signals:
 	void si_jsonPacketReceived(QJsonObject message);
 	void si_subscribeMessage(QString message);
 	void si_publishMessage(QString name, QByteArray payload);
-
+	void si_ptpMessageReceived(QString target,QString sender,QByteArray payload);
+	void si_ptpMessageReceived(QByteArray payload);
 public slots:
 private slots:
 	void socketReadyRead();

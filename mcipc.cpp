@@ -13,6 +13,7 @@ MCIPC::MCIPC(QString key, QObject *parent) : QObject(parent)
 	connect(m_parser,SIGNAL(jsonPacketReceived(QJsonObject)),this,SIGNAL(si_jsonPacketReceived(QJsonObject)));
 	connect(m_parser,SIGNAL(publishMessage(QString,QByteArray)),this,SIGNAL(si_publishMessage(QString,QByteArray)));
 	connect(m_parser,SIGNAL(subscribeMessage(QString)),this,SIGNAL(si_subscribeMessage(QString)));
+	connect(m_parser,SIGNAL(ptpMessageReceived(QString,QString,QByteArray)),this,SIGNAL(si_ptpMessageReceived(QString,QString,QByteArray)));
 	m_key = key;
 	m_ipcDataStore = new MCIPCDataStore();
 }
@@ -27,6 +28,7 @@ MCIPC::MCIPC(QTcpSocket *socket, QObject *parent) : QObject(parent)
 	connect(m_parser,SIGNAL(jsonPacketReceived(QJsonObject)),this,SIGNAL(si_jsonPacketReceived(QJsonObject)));
 	connect(m_parser,SIGNAL(publishMessage(QString,QByteArray)),this,SIGNAL(si_publishMessage(QString,QByteArray)));
 	connect(m_parser,SIGNAL(subscribeMessage(QString)),this,SIGNAL(si_subscribeMessage(QString)));
+	connect(m_parser,SIGNAL(ptpMessageReceived(QString,QString,QByteArray)),this,SIGNAL(si_ptpMessageReceived(QString,QString,QByteArray)));
 	m_socket = socket;
 	connect(m_socket,SIGNAL(readyRead()),this,SLOT(socketReadyRead()));
 	//connect(m_socket,SIGNAL(connected()),this,SLOT(socketConnected()));
@@ -158,6 +160,55 @@ void MCIPC::publishMessage(QString messageName,QByteArray content)
 	QByteArray packet = generateCorePacket(message);
 	m_socket->write(packet);
 }
+void MCIPC::sendMessage(QString target,QByteArray content,QString sender)
+{
+	if (sender == "")
+	{
+		sender = m_key;
+	}
+	QByteArray message = generateSendMessage(target,sender,content);
+	QByteArray packet = generateCorePacket(message);
+	m_socket->write(packet);
+}
+QByteArray MCIPC::generateSendMessage(QString target,QString sender,QByteArray payload)
+{
+	QByteArray retval;
+
+	//Message type, PTP message
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+	retval.append((char)0x0B);
+
+	//Message Flags
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+
+	//Length Of Target
+	retval.append(((unsigned char)(target.length() >> 24)) & 0xFF);
+	retval.append(((unsigned char)(target.length() >> 16)) & 0xFF);
+	retval.append(((unsigned char)(target.length() >> 8)) & 0xFF);
+	retval.append(((unsigned char)(target.length() >> 0)) & 0xFF);
+
+	retval.append(target);
+
+
+	//Length Of sender
+	retval.append(((unsigned char)(sender.length() >> 24)) & 0xFF);
+	retval.append(((unsigned char)(sender.length() >> 16)) & 0xFF);
+	retval.append(((unsigned char)(sender.length() >> 8)) & 0xFF);
+	retval.append(((unsigned char)(sender.length() >> 0)) & 0xFF);
+
+	retval.append(sender);
+
+
+
+	retval.append(payload);
+
+	return retval;
+}
 
 void MCIPC::subscribeMessage(QString messageName)
 {
@@ -184,6 +235,19 @@ QByteArray MCIPC::generateSubscribeMessage(QString messageName)
 	retval.append((char)0x00);
 	retval.append((char)0x00);
 	retval.append((char)0x00);
+
+	//Targetlen
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+
+	//senderlen
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+
 
 
 	retval.append(doc.toJson());
@@ -232,6 +296,20 @@ QByteArray MCIPC::generatePublishMessage(QString messageName,QByteArray payload)
 	retval.append((char)0x00);
 	retval.append((char)0x00);
 	retval.append((char)0x00);
+
+	//Targetlen
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+
+	//senderlen
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+	retval.append((char)0x00);
+
+
 
 
 	retval.append(doc.toJson());

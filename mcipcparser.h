@@ -16,6 +16,7 @@ signals:
 	void jsonPacketReceived(QJsonObject message);
 	void subscribeMessage(QString message);
 	void publishMessage(QString name, QByteArray payload);
+	void ptpMessageReceived(QString target,QString sender,QByteArray payload);
 public slots:
 };
 
